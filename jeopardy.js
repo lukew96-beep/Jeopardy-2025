@@ -22,55 +22,47 @@ const NUM_QUESTIONS_PER_CAT = 5;
 const jeopardyBoard = $("#jeopardy");
 let categories = [];
 
+// Use Open Trivia DB API endpoints
+const TRIVIA_API_CATEGORIES = "https://opentdb.com/api_category.php";
+const TRIVIA_API_QUESTIONS = "https://opentdb.com/api.php";
 
-/** Get NUM_CATEGORIES random category from API.
- *
- * Returns array of category ids
- */
-
-function getCategoryIds(catIds) {
-    let randomIds = _.sampleSize(catIds.data, NUM_CATEGORIES);
-    let categoryIds = [];
-    for (cat of randomIds) {
-        categoryIds.push(cat.id)
-    }
-    return categoryIds;
+/** Get NUM_CATEGORIES random categories from Open Trivia DB API. */
+async function getCategoryIds() {
+    const res = await axios.get(TRIVIA_API_CATEGORIES);
+    const allCategories = res.data.trivia_categories;
+    // Randomly select NUM_CATEGORIES
+    return _.sampleSize(allCategories, NUM_CATEGORIES);
 }
 
-/** Return object with data about a category:
- *
- *  Returns { title: "Math", clues: clue-array }
- *
- * Where clue-array is:
- *   [
- *      {question: "Hamlet Author", answer: "Shakespeare", showing: null},
- *      {question: "Bell Jar Author", answer: "Plath", showing: null},
- *      ...
- *   ]
- */
-
- function getCategory(catId) {
-    let cat = catId.data;
-    if (!cat.length || !cat[0].category || !cat[0].category.title) return;
-    let catData = {
-        title: cat[0].category.title,
-        clues: []
-    };
-    // Only include clues with both question and answer
-    cat.forEach((arr) => {
-        if (arr.question && arr.answer) {
-            catData.clues.push({
-                question: arr.question,
-                answer: arr.answer,
-                showing: null
-            });
+/** Return object with data about a category from Open Trivia DB API. */
+async function getCategory(cat) {
+    // Fetch NUM_QUESTIONS_PER_CAT questions for this category
+    const res = await axios.get(TRIVIA_API_QUESTIONS, {
+        params: {
+            amount: NUM_QUESTIONS_PER_CAT,
+            category: cat.id,
+            type: "multiple"
         }
     });
-    // Only add if we have enough clues
-    if (catData.clues.length >= NUM_QUESTIONS_PER_CAT) {
-        catData.clues = _.sampleSize(catData.clues, NUM_QUESTIONS_PER_CAT);
-        categories.push(catData);
-    }
+    // If not enough questions, skip this category
+    if (!res.data.results || res.data.results.length < NUM_QUESTIONS_PER_CAT) return null;
+    // Map to your clue structure
+    const clues = res.data.results.map(q => ({
+        question: decodeHtml(q.question),
+        answer: decodeHtml(q.correct_answer),
+        showing: null
+    }));
+    return {
+        title: cat.name,
+        clues
+    };
+}
+
+// Helper to decode HTML entities from API
+function decodeHtml(html) {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
 }
 
 /** Fill the HTML table#jeopardy with the categories & cells for questions.
@@ -156,39 +148,15 @@ function hideLoadingView() {
  async function setupAndStart() {
     categories = [];
     showLoadingView();
-    let catCount = 0;
-    let attempts = 0;
-    const resCategories = await axios.get("http://jservice.io/api/categories", {
-        params: { count: 100 }
-    });
-    let catIds = getCategoryIds(resCategories);
-    for (let id of catIds) {
-        const resTitles = await axios.get("http://jservice.io/api/clues", {
-            params: { category: id }
-        });
-        const prevLen = categories.length;
-        getCategory(resTitles);
-        if (categories.length > prevLen) catCount++;
-        attempts++;
-        // If not enough valid categories, try more
-        if (catCount >= NUM_CATEGORIES) break;
+    let catObjs = await getCategoryIds();
+    for (let cat of catObjs) {
+        let catData = await getCategory(cat);
+        if (catData) categories.push(catData);
     }
-    // If we still don't have enough, try to fetch more
-    while (catCount < NUM_CATEGORIES && attempts < 200) {
-        const res = await axios.get("http://jservice.io/api/categories", {
-            params: { count: 10 }
-        });
-        let ids = getCategoryIds(res);
-        for (let id of ids) {
-            const resTitles = await axios.get("http://jservice.io/api/clues", {
-                params: { category: id }
-            });
-            const prevLen = categories.length;
-            getCategory(resTitles);
-            if (categories.length > prevLen) catCount++;
-            attempts++;
-            if (catCount >= NUM_CATEGORIES) break;
-        }
+    // If not enough valid categories, try again
+    if (categories.length < NUM_CATEGORIES) {
+        await setupAndStart();
+        return;
     }
     fillTable();
     hideLoadingView();

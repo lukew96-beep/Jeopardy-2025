@@ -39,22 +39,31 @@ async function getCategory(cat) {
     // Fetch NUM_QUESTIONS_PER_CAT questions for this category
     const res = await axios.get(TRIVIA_API_QUESTIONS, {
         params: {
-            amount: NUM_QUESTIONS_PER_CAT,
+            amount: NUM_QUESTIONS_PER_CAT * 2, // Request more to avoid duplicates and ensure enough unique questions
             category: cat.id,
             type: "multiple"
         }
     });
-    // If not enough questions, skip this category
     if (!res.data.results || res.data.results.length < NUM_QUESTIONS_PER_CAT) return null;
-    // Map to your clue structure
-    const clues = res.data.results.map(q => ({
-        question: decodeHtml(q.question),
-        answer: decodeHtml(q.correct_answer),
-        showing: null
-    }));
+    // Remove duplicates by question text
+    const unique = [];
+    const seen = new Set();
+    for (const q of res.data.results) {
+        const text = decodeHtml(q.question);
+        if (!seen.has(text)) {
+            unique.push({
+                question: text,
+                answer: decodeHtml(q.correct_answer),
+                showing: null
+            });
+            seen.add(text);
+        }
+        if (unique.length === NUM_QUESTIONS_PER_CAT) break;
+    }
+    if (unique.length < NUM_QUESTIONS_PER_CAT) return null;
     return {
         title: cat.name,
-        clues
+        clues: unique
     };
 }
 
@@ -138,14 +147,19 @@ function hideLoadingView() {
 	$("#jeopardy").show();
 }
 
+// Utility: sleep for ms milliseconds
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /** Start game:
  *
  * - get random category Ids
  * - get data for each category
  * - create HTML table
  * */
-
- async function setupAndStart() {
+async function setupAndStart(retryCount = 0) {
+    const MAX_RETRIES = 5;
     categories = [];
     showLoadingView();
     let catObjs = await getCategoryIds();
@@ -153,22 +167,17 @@ function hideLoadingView() {
         let catData = await getCategory(cat);
         if (catData) categories.push(catData);
     }
-    // If not enough valid categories, try again
+    // If not enough valid categories, try again with delay
     if (categories.length < NUM_CATEGORIES) {
-        await setupAndStart();
+        if (retryCount < MAX_RETRIES) {
+            await sleep(1000); // Wait 1 second before retrying
+            await setupAndStart(retryCount + 1);
+        } else {
+            hideLoadingView();
+            alert("Failed to load enough categories. Please try again later.");
+        }
         return;
     }
     fillTable();
     hideLoadingView();
 }
-
-/** On click of start / restart button, set up game. */
-$("#restart").on("click", function() {
-	setupAndStart();
-});
-
-/** On page load, add event handler for clicking clues */
-$(document).ready(function() {
-	setupAndStart();
-	$("#jeopardy").on("click", ".clue-cell", handleClick);
-});

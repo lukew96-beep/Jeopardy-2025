@@ -154,20 +154,44 @@ function hideLoadingView() {
  * */
 
  async function setupAndStart() {
-	categories = [];
-	showLoadingView();
-	const resCategories = await axios.get("http://jservice.io/api/categories", {
-		params: { count: 100 }
-	});
-	let catIds = getCategoryIds(resCategories);
-	for (id of catIds) {
-		const resTitles = await axios.get("http://jservice.io/api/clues", {
-			params: { category: id }
-		});
-		getCategory(resTitles);
-	}
-	fillTable();
-	hideLoadingView();
+    categories = [];
+    showLoadingView();
+    let catCount = 0;
+    let attempts = 0;
+    const resCategories = await axios.get("http://jservice.io/api/categories", {
+        params: { count: 100 }
+    });
+    let catIds = getCategoryIds(resCategories);
+    for (let id of catIds) {
+        const resTitles = await axios.get("http://jservice.io/api/clues", {
+            params: { category: id }
+        });
+        const prevLen = categories.length;
+        getCategory(resTitles);
+        if (categories.length > prevLen) catCount++;
+        attempts++;
+        // If not enough valid categories, try more
+        if (catCount >= NUM_CATEGORIES) break;
+    }
+    // If we still don't have enough, try to fetch more
+    while (catCount < NUM_CATEGORIES && attempts < 200) {
+        const res = await axios.get("http://jservice.io/api/categories", {
+            params: { count: 10 }
+        });
+        let ids = getCategoryIds(res);
+        for (let id of ids) {
+            const resTitles = await axios.get("http://jservice.io/api/clues", {
+                params: { category: id }
+            });
+            const prevLen = categories.length;
+            getCategory(resTitles);
+            if (categories.length > prevLen) catCount++;
+            attempts++;
+            if (catCount >= NUM_CATEGORIES) break;
+        }
+    }
+    fillTable();
+    hideLoadingView();
 }
 
 /** On click of start / restart button, set up game. */

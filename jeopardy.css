@@ -1,0 +1,118 @@
+body {
+	background: linear-gradient(135deg, #040986 0%, #0a1a4f 100%);
+	min-height: 100vh;
+	margin: 0;
+	padding: 0;
+	font-family: 'Copse', Helvetica, Arial, sans-serif;
+}
+
+#jeopardy {
+	margin-top: 2rem;
+	box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+	border-radius: 16px;
+	background: rgba(6, 12, 233, 0.7);
+	backdrop-filter: blur(4px);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+}
+
+#jeopardy th,
+#jeopardy td {
+	background: linear-gradient(135deg, #060ce9 60%, #1e2a78 100%);
+	border: solid 2px #fff;
+	color: #fff;
+	transition: background 0.3s, color 0.3s, transform 0.2s;
+}
+
+#jeopardy td:hover {
+	background: #f7d51d;
+	color: #060ce9;
+	transform: scale(1.05);
+	box-shadow: 0 0 10px #f7d51d99;
+	cursor: pointer;
+}
+
+#jeopardy th {
+	text-transform: uppercase;
+	font-family: Helvetica, sans-serif;
+	font-weight: bold;
+	height: 4em;
+	font-size: 1.2em;
+	letter-spacing: 2px;
+	text-shadow: 1px 1px 2px #000a;
+}
+
+td {
+	height: 9em;
+	font-family: Copse, serif;
+	font-size: 1.1em;
+	font-weight: bold;
+	text-align: center;
+	vertical-align: middle;
+	transition: background 0.3s, color 0.3s, transform 0.2s;
+}
+
+div {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+}
+
+button {
+	margin-top: 2rem;
+	padding: 10px;
+	background-color: #060ce9;
+	color: white;
+	border: solid 1px white;
+}
+
+#restart {
+	display: block;
+	margin: 2rem auto 1rem auto;
+	padding: 0.8em 2em;
+	font-size: 1.1em;
+	font-family: inherit;
+	background: linear-gradient(90deg, #f7d51d 60%, #ffe066 100%);
+	color: #060ce9;
+	border: none;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px #0002;
+	font-weight: bold;
+	transition: background 0.3s, color 0.3s, transform 0.2s;
+}
+
+#restart:hover {
+	background: linear-gradient(90deg, #ffe066 60%, #f7d51d 100%);
+	color: #fff;
+	transform: scale(1.05);
+	cursor: pointer;
+}
+
+#loader {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: fixed;
+	z-index: 1000;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background: rgba(0,0,0,0.3);
+}
+
+#loader:after {
+	content: '';
+	display: block;
+	width: 60px;
+	height: 60px;
+	border: 8px solid #f7d51d;
+	border-top: 8px solid #060ce9;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}

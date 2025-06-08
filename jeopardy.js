@@ -50,25 +50,27 @@ function getCategoryIds(catIds) {
  */
 
  function getCategory(catId) {
-	let cat = catId.data;
-	// gets the amount of questions needed from the category
-	let clues = _.sampleSize(cat, NUM_QUESTIONS_PER_CAT);
-	// gets titles from categories
-	let catData = {
-		title: cat[0].category.title,
-		clues: []
-	};
-	// gets questions and answers from categories
-	clues.map((arr) => {
-		let cluesArr = {
-			question: arr.question,
-			answer: arr.answer,
-			showing: null
-		};
-		catData.clues.push(cluesArr);
-	});
-	// pushes data into categories array
-	categories.push(catData);
+    let cat = catId.data;
+    if (!cat.length || !cat[0].category || !cat[0].category.title) return;
+    let catData = {
+        title: cat[0].category.title,
+        clues: []
+    };
+    // Only include clues with both question and answer
+    cat.forEach((arr) => {
+        if (arr.question && arr.answer) {
+            catData.clues.push({
+                question: arr.question,
+                answer: arr.answer,
+                showing: null
+            });
+        }
+    });
+    // Only add if we have enough clues
+    if (catData.clues.length >= NUM_QUESTIONS_PER_CAT) {
+        catData.clues = _.sampleSize(catData.clues, NUM_QUESTIONS_PER_CAT);
+        categories.push(catData);
+    }
 }
 
 /** Fill the HTML table#jeopardy with the categories & cells for questions.
